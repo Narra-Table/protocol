@@ -410,8 +410,6 @@ export namespace Narratable {
     sort: "asc" | "desc";
     pinnedOnly?: boolean;
     maskId?: MaskId;
-    /** 按用户视角过滤帷幕不可见消息 */
-    viewerUserId?: UserId;
   }
 
   export interface PaginatedMessages {
@@ -603,9 +601,9 @@ export namespace Narratable {
 
     /**
      * GET /api/rooms/:roomId/messages 的查询参数
-     * 复用 Message.MessageQuery（roomId 来自 URL 路径，viewerUserId 由服务端从 Token 提取）
+     * 复用 Message.MessageQuery（roomId 来自 URL 路径）
      */
-    type MessagesQuery = Omit<Message.MessageQuery, "viewerUserId">;
+    type MessagesQuery = Message.MessageQuery;
 
     /** PATCH /api/messages/:messageId */
     interface EditMessageRequest {
