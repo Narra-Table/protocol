@@ -562,6 +562,7 @@ export namespace Narratable {
       name: string;
       type: Room.Type;
       sortOrder: number;
+      hasJoinCode: boolean;
       isArchived: boolean;
       lastMessage?: {
         senderName: string;
@@ -583,6 +584,7 @@ export namespace Narratable {
     /** POST /api/rooms/:roomId/join */
     interface JoinRoomRequest {
       maskId?: MaskId;
+      code?: string;  // 房间密码（有密码的房间必填）
     }
 
     interface JoinRoomResponse {
@@ -595,6 +597,17 @@ export namespace Narratable {
     interface LeaveRoomResponse {
       roomId: RoomId;
       memberCount: number;
+    }
+
+    /** POST /api/spaces/:spaceId/rooms — 响应 */
+    interface CreateRoomResponse {
+      room: Room;
+      joinCode: string;  // 6位数字密码，仅在创建/重置时返回
+    }
+
+    /** POST /api/rooms/:roomId/regenerate-code — 响应 */
+    interface RegenerateCodeResponse {
+      joinCode: string;
     }
 
     // ---- 消息 ----
