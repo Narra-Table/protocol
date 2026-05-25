@@ -1,6 +1,6 @@
 # @narratable/protocol
 
-故桌 (Narratable) 接口协议 v2 — 共享 TypeScript 类型定义。
+故桌 (Narratable) 接口协议 v1 — 共享 TypeScript 类型定义。
 
 桌面端和移动端前端团队的单一事实来源。
 
@@ -104,7 +104,7 @@ Narratable
 
 ## 版本策略
 
-- 主版本号 = 协议大版本（当前 v2）
+- 主版本号 = 协议大版本（当前 v1）
 - 次版本号 = 新增类型/字段（向后兼容）
 - 修订号 = 注释/文档修正
 

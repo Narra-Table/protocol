@@ -1,6 +1,6 @@
 {
   "name": "@narratable/protocol",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "故桌 (Narratable) 接口协议 v2 — 共享 TypeScript 类型定义",
   "types": "./proposed_protocol.d.ts",
   "files": [
