@@ -135,7 +135,10 @@ export namespace Narratable {
     characterId?: CharacterId;
     /** 可使用此面具的用户列表 —— 一个用户可出现在多个面具中 */
     userIds: UserId[];
+    /** 是否为默认面具 */
+    isDefault: boolean;
     createdAt: Timestamp;
+    updatedAt: Timestamp;
   }
 
   export namespace Character {
