@@ -6,7 +6,7 @@
  *
  *  核心概念：
  *  1. 空间(Space) > 房间(Room) > 消息(Message)
- *  2. 面具(Mask) 是发言身份，可引用角色(Character)
+ *  2. 面具(Mask) 是发言身份，可组合角色卡(CharacterCard)
  *  3. 帷幕(Veil) 绑定在消息上，控制可见性
  *  4. 消息分类型：聊天消息(段落块+行内块)、骰点消息、指令消息、系统消息
  *  5. 段落块(Block) 和 行内块(Inline) 区分层级
@@ -20,6 +20,8 @@ export namespace Narratable {
   export type UserId = string;
   export type MaskId = string;
   export type CharacterId = string;
+  export type CharacterCardId = string;
+
   export type SpaceId = string;
   export type RoomId = string;
   export type MessageId = string;
@@ -57,7 +59,7 @@ export namespace Narratable {
     exportedAt: Timestamp;
     space: Narratable.Space;
     rooms: Narratable.Room[];
-    characters: Narratable.Character[];
+    characterCards: Narratable.CharacterCard[];
     masks: Narratable.Mask[];
     resources?: Narratable.Resource[];
     messages: Record<RoomId, Narratable.Message[]>;
@@ -74,8 +76,8 @@ export namespace Narratable {
     members: Space.Member[];
     /** 空间中的房间列表 */
     rooms: RoomId[];
-    /** 空间中的角色列表 */
-    characters: CharacterId[];
+    /** 空间中的角色卡列表 */
+    characterCards: CharacterCardId[];
     /** 空间中的面具列表 */
     masks: MaskId[];
     /** active: 跑团中 / archived: 已结团 */
@@ -117,11 +119,11 @@ export namespace Narratable {
   //  策划案 6.2 / 7.3：
   //  用户以面具身份发言，一人可拥有多个面具
   //
-  //  面具与角色的关系：
+  //  面具与角色卡的关系：
   //  - Mask 是"发言身份"层（名称、头像、类型、谁能用）
-  //  - Character 是"角色数据"层（属性、技能、简介）
-  //  - character/npc 类型面具必绑角色；system/gm 类型可选绑（自定义骰娘/GM 身份时绑定）
-  //  - 一个角色可以被多个面具引用（如 PC 角色同时有主面具和战斗面具）
+  //  - CharacterCard 是"角色数据"层（属性、技能、简介）
+  //  - 一个面具可绑定 0..N 张角色卡（不同规则兼容）
+  //  - 当前使用哪张卡由空间规则（space.ruleType）自动匹配
   // ============================================================
 
   export type Type = "character" | "npc" | "system" | "gm";
@@ -133,11 +135,16 @@ export namespace Narratable {
     maskId: MaskId;
     spaceId: SpaceId;
     name: string;
-    avatar?: string;
+    /** 头像映射：名称 → avatarId（如 {"default":"av_001","立绘":"av_002"}） */
+    avatars: Record<string, string>;
+    /** 当前发言头像 ID */
+    currentAvatarId: string;
+    /** 默认头像 ID（fallback） */
+    defaultAvatarId: string;
     type: Mask.Type;
-    /** 绑定的角色 ID（character/npc 类型必填；system/gm 类型可选——绑则自定义身份信息，不绑用默认） */
-    characterId?: CharacterId;
-    /** 可使用此面具的用户列表 —— 一个用户可出现在多个面具中 */
+    /** 绑定的角色卡列表（0..N），当前卡由空间规则自动匹配 */
+    characterCards: CharacterCardId[];
+    /** 可使用此面具的用户列表 */
     userIds: UserId[];
     /** 是否为默认面具 */
     isDefault: boolean;
@@ -145,28 +152,32 @@ export namespace Narratable {
     updatedAt: Timestamp;
   }
 
-  export namespace Character {
-  //  五、角色 (Character) —— 角色卡数据
-  //  策划案 8.4：玩家角色卡、NPC 管理
+  export namespace CharacterCard {
+  //  五、角色卡 (CharacterCard) —— 规则无关的属性数据
+  //  策划案 8.4：玩家角色、NPC 管理
+  //
+  //  角色卡只存纯数据（attributes），不负责展示。
+  //  展示层（名字、头像）由 Mask 管理。
+  //
+  //  不同规则系统的属性结构不同（DND 面板 ≠ CoC 面板），
+  //  通过 card.name 区分，由 space.ruleType 自动匹配当前使用的卡。
   // ============================================================
 
   export type Type = "pc" | "npc" | "system";
   // ============================================================
 
-  } // end namespace Character
+  } // end namespace CharacterCard
 
-  export interface Character {
-    characterId: CharacterId;
-    spaceId: SpaceId;
+  export interface CharacterCard {
+    characterId: CharacterCardId;
+    /** 所属面具 ID */
+    maskId: MaskId;
+    /** 卡名，如 "DND 5e"、"CoC 7th"（与 space.ruleType 匹配） */
     name: string;
-    avatar?: string;
-    /** pc: 玩家角色 / npc: 非玩家角色 / system: 系统角色（骰娘等） */
-    type: Character.Type;
-    /** 角色属性（开放式，不同规则系统自行定义结构） */
+    /** 规则无关的角色属性（不同规则系统自行定义结构） */
     attributes: Record<string, unknown>;
     /** 角色模板 ID */
     templateId?: string;
-    bio?: string;
     createdAt: Timestamp;
     updatedAt: Timestamp;
   }
@@ -251,6 +262,9 @@ export namespace Narratable {
     /** command 类型：指令响应对应的原始消息 ID */
     refMessageId?: MessageId;
 
+    /** forward 类型：合并转发内容 */
+    forward?: Narratable.ForwardContent;
+
     // ---- 编辑历史 ----
     editHistory: Message.EditRecord[];
   }
@@ -265,11 +279,12 @@ export namespace Narratable {
   //  - clue:    线索消息（线索卡片，含发现状态）
   //  - command: 指令消息（如 .r 3d6+2、.help、.init）
   //  - system:  系统通知（入房、结团等自动消息）
+  //  - forward: 合并转发消息（引用模式或完整模式）
   //
   //  指令（含骰点）是完整的消息，不是消息内的节点
   // ============================================================
 
-  export type Type = "chat" | "clue" | "command" | "system";
+  export type Type = "chat" | "clue" | "command" | "system" | "forward";
 
   /** 编辑记录 */
   export interface EditRecord {
@@ -319,7 +334,7 @@ export namespace Narratable {
   export interface Image {
 
     type: "image";
-    url: string;
+    resourceId: string;
     width: number;
     height: number;
     alt?: string;
@@ -329,7 +344,7 @@ export namespace Narratable {
   export interface Audio {
 
     type: "audio";
-    url: string;
+    resourceId: string;
     title?: string;
     /** 时长（秒） */
     duration?: number;
@@ -370,12 +385,12 @@ export namespace Narratable {
 
   export type Inline = Text | Mention | Face;
 
-  /** 提及目标 —— 可 @user、@mask 或 @character */
+  /** 提及目标 —— 可 @user、@mask 或 @characterCard */
   export type MentionTarget =
 
     | { kind: "user";      userId: UserId }
     | { kind: "mask";      maskId: MaskId }
-    | { kind: "character"; characterId: CharacterId };
+    | { kind: "characterCard"; characterCardId: CharacterCardId };
 
   /** 文本行内元素 */
   export interface Text {
@@ -393,7 +408,7 @@ export namespace Narratable {
   export interface Mention {
 
     type: "mention";
-    /** 提及目标：user / mask / character */
+    /** 提及目标：user / mask / characterCard */
     target: MentionTarget;
     /** 展示文本（不填则用目标名称） */
     displayText?: string;
@@ -428,6 +443,41 @@ export namespace Narratable {
     hasMore: boolean;
   }
   } // end namespace Message
+
+  // ============================================================
+  //  十、合并转发 (Forward)
+  //  合并转发消息类型，支持两种模式：
+  //    引用模式（有 sourceMessageId + sourceRoomId）—— 可跳转原文
+  //    完整模式（无 sourceMessageId）—— 纯快照
+  //  递归嵌套深度限制为 3 层
+  // ============================================================
+
+  /** 合并转发内容 */
+  export interface ForwardContent {
+    /** 标题，手动填写或自动生成 */
+    title: string;
+    /** 来源描述（空间/房间） */
+    sourceDesc?: string;
+    messages: ForwardedMessage[];
+    /** 嵌套深度，服务端填充，从 1 开始 */
+    depth: number;
+  }
+
+  /** 单条被转发消息 */
+  export interface ForwardedMessage {
+    /** 原始消息 ID（引用模式时存在） */
+    sourceMessageId?: MessageId;
+    /** 原始房间 ID */
+    sourceRoomId?: string;
+    senderMaskId: MaskId;
+    senderName: string;
+    avatarId: string;
+    type: string;
+    blocks: Message.Block[];
+    timestamp: Timestamp;
+    /** 递归：转发内嵌转发 */
+    forward?: ForwardContent;
+  }
 
   export namespace Resource {
   // ============================================================
@@ -821,16 +871,20 @@ export namespace Narratable {
 
     /** POST /api/spaces/:spaceId/masks */
     export interface CreateMaskRequest {
-      name?: string;
-      avatar?: string;
+      name: string;
       type: Mask.Type;
-      characterId?: CharacterId;
+      /** 头像映射 */
+      avatars: Record<string, string>;
+      currentAvatarId: string;
+      defaultAvatarId: string;
     }
 
     /** PATCH /api/spaces/:spaceId/masks/:maskId */
     export interface UpdateMaskRequest {
       name?: string;
-      avatar?: string;
+      avatars?: Record<string, string>;
+      currentAvatarId?: string;
+      defaultAvatarId?: string;
       userIds?: UserId[];
     }
 
@@ -838,35 +892,25 @@ export namespace Narratable {
       masks: Mask[];
     }
 
-    // ---- 角色 ----
+    // ---- 角色卡 ----
 
-    /** POST /api/spaces/:spaceId/characters */
-    export interface CreateCharacterRequest {
+    /** POST /api/masks/:maskId/cards */
+    export interface CreateCharacterCardRequest {
+      /** 卡名，如 "DND 5e" */
       name: string;
-      avatar?: string;
-      type: Character.Type;
       attributes?: Record<string, unknown>;
       templateId?: string;
-      bio?: string;
     }
 
-    /** PATCH /api/spaces/:spaceId/characters/:charId */
-    export interface UpdateCharacterRequest {
+    /** PUT /api/masks/:maskId/cards/:cardId */
+    export interface UpdateCharacterCardRequest {
       name?: string;
-      avatar?: string;
-      type?: Character.Type;
       attributes?: Record<string, unknown>;
       templateId?: string;
-      bio?: string;
     }
 
-    export interface CreateCharacterResponse {
-      character: Character;
-      mask: Mask;
-    }
-
-    export interface CharacterListResponse {
-      characters: Character[];
+    export interface CharacterCardListResponse {
+      cards: CharacterCard[];
     }
 
     // ---- 私聊 ----
