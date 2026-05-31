@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "故桌 (Narratable) 接口协议 v2 — 共享 TypeScript 类型定义",
   "types": "./proposed_protocol.d.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit --skipLibCheck proposed_protocol.d.ts"
+  },
   "files": [
     "proposed_protocol.d.ts"
   ],

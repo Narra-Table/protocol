@@ -37,7 +37,7 @@ export namespace Narratable {
   //  归档后的空间可导出为模组，模组可导入为新空间
   // ============================================================
 
-  export type Role = "gm" | "vice-gm" | "pl" | "observer";
+  export type Role = "gm" | "agm" | "pl" | "ob";
 
   export interface Member {
     userId: UserId;
@@ -178,9 +178,9 @@ export namespace Narratable {
   //
   //  可见策略：
   //  - all:            全体成员可见
-  //  - gm_only:        仅 GM / Vice-GM 可见（秘密信息）
+  //  - gm_only:        仅 GM / AGM 可见（秘密信息）
   //  - custom:         仅指定成员可见（单线线索、秘密团分视角）
-  //  - gm_and_custom:  GM / Vice-GM + 指定成员可见
+  //  - gm_and_custom:  GM / AGM + 指定成员可见
   //
   //  阶段性隐藏通过 revealOnSpaceClose 实现——结团前隐藏，结团后公开。
   // ============================================================
