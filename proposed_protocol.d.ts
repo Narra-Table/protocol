@@ -17,13 +17,16 @@ export namespace Narratable {
   //  一、基础 ID 和通用类型
   // ============================================================
 
-  type UserId = string;
-  type MaskId = string;
-  type CharacterId = string;
-  type SpaceId = string;
-  type RoomId = string;
-  type MessageId = string;
-  type Timestamp = string; // ISO 8601
+  export type UserId = string;
+  export type MaskId = string;
+  export type CharacterId = string;
+  export type SpaceId = string;
+  export type RoomId = string;
+  export type MessageId = string;
+  export type ResourceId = string;
+  export type PluginId = string;
+  export type RuleId = string;
+  export type Timestamp = string; // ISO 8601
 
   /** 指令参数 */
 
@@ -34,7 +37,7 @@ export namespace Narratable {
   //  归档后的空间可导出为模组，模组可导入为新空间
   // ============================================================
 
-  export type Role = "gm" | "pl" | "observer";
+  export type Role = "gm" | "vice-gm" | "pl" | "observer";
 
   export interface Member {
     userId: UserId;
@@ -52,16 +55,17 @@ export namespace Narratable {
   export interface Export {
     version: string;
     exportedAt: Timestamp;
-    space: Space;
-    rooms: Room[];
-    characters: Character[];
-    masks: Mask[];
-    messages: Record<RoomId, Message[]>;
+    space: Narratable.Space;
+    rooms: Narratable.Room[];
+    characters: Narratable.Character[];
+    masks: Narratable.Mask[];
+    resources?: Narratable.Resource[];
+    messages: Record<RoomId, Narratable.Message[]>;
   }
 
 } // end namespace Space
 
-  interface Space {
+  export interface Space {
     spaceId: SpaceId;
     name: string;
     description: string;
@@ -93,7 +97,7 @@ export namespace Narratable {
 
   } // end namespace Room
 
-  interface Room {
+  export interface Room {
     roomId: RoomId;
     spaceId: SpaceId;
     name: string;
@@ -125,7 +129,7 @@ export namespace Narratable {
 
   } // end namespace Mask
 
-  interface Mask {
+  export interface Mask {
     maskId: MaskId;
     spaceId: SpaceId;
     name: string;
@@ -145,17 +149,19 @@ export namespace Narratable {
   //  五、角色 (Character) —— 角色卡数据
   //  策划案 8.4：玩家角色卡、NPC 管理
   // ============================================================
+
+  export type Type = "pc" | "npc" | "system";
   // ============================================================
 
   } // end namespace Character
 
-  interface Character {
+  export interface Character {
     characterId: CharacterId;
     spaceId: SpaceId;
     name: string;
     avatar?: string;
     /** pc: 玩家角色 / npc: 非玩家角色 / system: 系统角色（骰娘等） */
-    type: "pc" | "npc" | "system";
+    type: Character.Type;
     /** 角色属性（开放式，不同规则系统自行定义结构） */
     attributes: Record<string, unknown>;
     /** 角色模板 ID */
@@ -172,9 +178,9 @@ export namespace Narratable {
   //
   //  可见策略：
   //  - all:            全体成员可见
-  //  - gm_only:        仅 GM 可见（秘密信息）
+  //  - gm_only:        仅 GM / Vice-GM 可见（秘密信息）
   //  - custom:         仅指定成员可见（单线线索、秘密团分视角）
-  //  - gm_and_custom:  GM + 指定成员可见
+  //  - gm_and_custom:  GM / Vice-GM + 指定成员可见
   //
   //  阶段性隐藏通过 revealOnSpaceClose 实现——结团前隐藏，结团后公开。
   // ============================================================
@@ -184,7 +190,7 @@ export namespace Narratable {
 
   } // end namespace Veil
 
-  interface Veil {
+  export interface Veil {
     visibility: Veil.Visibility;
     /** 可见用户列表（custom / gm_and_custom 时使用） */
     visibleTo?: UserId[];
@@ -192,7 +198,7 @@ export namespace Narratable {
     revealOnSpaceClose: boolean;
   }
 
-  interface Message {
+  export interface Message {
     messageId: MessageId;
     roomId: RoomId;
     spaceId: SpaceId;
@@ -206,7 +212,7 @@ export namespace Narratable {
 
     // ---- 时间与状态 ----
     sendTime: Timestamp;
-    updateTime: Timestamp | null;
+    updateTime?: Timestamp;
     /** 是否已删除（软删除，客户端可选择隐藏） */
     deleted: boolean;
     /** 是否置顶 */
@@ -263,10 +269,10 @@ export namespace Narratable {
   //  指令（含骰点）是完整的消息，不是消息内的节点
   // ============================================================
 
-  type Type = "chat" | "clue" | "command" | "system";
+  export type Type = "chat" | "clue" | "command" | "system";
 
   /** 编辑记录 */
-  interface EditRecord {
+  export interface EditRecord {
     editTime: Timestamp;
     /** 编辑前的内容（chat/clue 类型）或指令（command 类型） */
     previousRaw: unknown;
@@ -274,13 +280,13 @@ export namespace Narratable {
   }
 
   /** 指令参数 */
-  interface Param {
+  export interface Param {
     name: string;
     value: string;
   }
 
   /** 指令执行结果 */
-  interface Result {
+  export interface Result {
     success: boolean;
     /** 成功时的输出数据 */
     data?: unknown;
@@ -422,12 +428,90 @@ export namespace Narratable {
     hasMore: boolean;
   }
   } // end namespace Message
+
+  export namespace Resource {
+  // ============================================================
+  //  资源 (Resource) —— 空间附件与外部资源引用
+  // ============================================================
+
+  export type Kind = "image" | "audio" | "video" | "document" | "archive" | "other";
+
+  } // end namespace Resource
+
+  export interface Resource {
+    resourceId: ResourceId;
+    spaceId: SpaceId;
+    roomId?: RoomId;
+    messageId?: MessageId;
+    name: string;
+    kind: Resource.Kind;
+    uri: string;
+    mimeType: string;
+    sizeBytes: number;
+    checksum?: string;
+    metadata?: Record<string, unknown>;
+    uploadedBy: UserId;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+  }
+
+  export namespace Plugin {
+  // ============================================================
+  //  插件与规则模板
+  // ============================================================
+
+  export interface OverrideConfig {
+    priority?: number;
+    isImportant: boolean;
+  }
+
+  export interface Ref {
+    pluginId: PluginId;
+    sortOrder: number;
+    overrides?: Record<string, OverrideConfig>;
+  }
+
+  } // end namespace Plugin
+
+  export interface Plugin {
+    pluginId: PluginId;
+    name: string;
+    displayName: string;
+    version: string;
+    description: string;
+    author: string;
+    source: string;
+    characterDataType?: string;
+    configSchema?: Record<string, unknown>;
+    builtIn: boolean;
+    enabled: boolean;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+  }
+
+  export interface PluginRule {
+    ruleId: RuleId;
+    spaceId: SpaceId;
+    name: string;
+    active: boolean;
+    plugins: Plugin.Ref[];
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+  }
+
+  export interface RuleTemplate {
+    templateId: string;
+    name: string;
+    description: string;
+    plugins: Plugin.Ref[];
+  }
+
   // ============================================================
   export namespace Event {
   //  十一、实时事件（WebSocket 推送）
   // ============================================================
 
-  type Type =
+  export type Type =
     | "message.created"
     | "message.updated"
     | "message.deleted"
@@ -435,37 +519,37 @@ export namespace Narratable {
     | "member.left"
     | "veil.revealed";
 
-  interface Base {
+  export interface Base {
     type: Type;
     spaceId: SpaceId;
     timestamp: Timestamp;
   }
 
-  interface Created extends Base {
+  export interface Created extends Base {
     type: "message.created";
     message: Message;
   }
 
-  interface Updated extends Base {
+  export interface Updated extends Base {
     type: "message.updated";
     message: Message;
   }
 
-  interface Deleted extends Base {
+  export interface Deleted extends Base {
     type: "message.deleted";
     messageId: MessageId;
     roomId: RoomId;
   }
 
   /** 帷幕公开事件（结团后自动公开） */
-  interface VeilRevealed extends Base {
+  export interface VeilRevealed extends Base {
     type: "veil.revealed";
     messageIds: MessageId[];
     reason: "space_closed";
   }
 
   /** 成员加入房间 */
-  interface MemberJoined extends Base {
+  export interface MemberJoined extends Base {
     type: "member.joined";
     roomId: RoomId;
     member: {
@@ -476,7 +560,7 @@ export namespace Narratable {
   }
 
   /** 成员离开房间 */
-  interface MemberLeft extends Base {
+  export interface MemberLeft extends Base {
     type: "member.left";
     roomId: RoomId;
     userId: UserId;
@@ -486,7 +570,7 @@ export namespace Narratable {
 
   } // end namespace Event
 
-  type Event =
+  export type Event =
     | Event.Created
     | Event.Updated
     | Event.Deleted
@@ -502,25 +586,85 @@ export namespace Narratable {
 
   export namespace API {
     /** 通用错误响应 */
-    interface ErrorResponse {
+    export interface ErrorResponse {
       error: string;
       details?: string;
+    }
+
+    // ---- 认证 ----
+
+    /** POST /auth/login */
+    export interface LoginRequest {
+      username: string;
+      password: string;
+    }
+
+    /** POST /auth/register */
+    export interface RegisterRequest {
+      email: string;
+      password: string;
+      code: string;
+    }
+
+    /** POST /auth/send-code */
+    export interface SendCodeRequest {
+      email: string;
+    }
+
+    /** POST /auth/refresh */
+    export interface RefreshRequest {
+      refreshToken: string;
+    }
+
+    /** POST /auth/reset-password */
+    export interface ResetPasswordRequest {
+      email: string;
+      code: string;
+      newPassword: string;
+    }
+
+    export interface UserResponse {
+      id: UserId;
+      username: string;
+      email?: string;
+      nickname: string;
+      avatar: string;
+    }
+
+    export interface AuthTokenResponse {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+    }
+
+    // ---- 管理后台 ----
+
+    /** POST /admin/login */
+    export interface AdminLoginRequest {
+      username: string;
+      password: string;
+    }
+
+    /** POST /admin/change-password */
+    export interface ChangePasswordRequest {
+      oldPassword: string;
+      newPassword: string;
     }
 
     // ---- 空间 ----
 
     /** POST /api/spaces */
-    interface CreateSpaceRequest {
+    export interface CreateSpaceRequest {
       name: string;
       description?: string;
     }
 
     /** GET /api/spaces */
-    interface SpacesListResponse {
+    export interface SpacesListResponse {
       spaces: SpaceSummary[];
     }
 
-    interface SpaceSummary {
+    export interface SpaceSummary {
       spaceId: SpaceId;
       name: string;
       ownerId: UserId;
@@ -531,35 +675,59 @@ export namespace Narratable {
       lastActiveAt: Timestamp;
     }
 
+    export interface SpaceDetail {
+      spaceId: SpaceId;
+      name: string;
+      description: string;
+      ownerId: UserId;
+      members: Space.Member[];
+      status: "active" | "archived";
+      moduleSource?: { moduleId: string; moduleName: string };
+      createdAt: Timestamp;
+      updatedAt: Timestamp;
+    }
+
     /** PATCH /api/spaces/:spaceId */
-    interface UpdateSpaceRequest {
+    export interface UpdateSpaceRequest {
       name?: string;
       description?: string;
       status?: "active" | "archived";
     }
 
     /** POST /api/spaces/:spaceId/members */
-    interface InviteMemberRequest {
+    export interface InviteMemberRequest {
       userId: UserId;
       role: Space.Role;
+    }
+
+    /** PATCH /api/spaces/:spaceId/members/:userId/role */
+    export interface UpdateMemberRoleRequest {
+      role: Space.Role;
+    }
+
+    /** POST /api/spaces/:spaceId/reveal-all-veils */
+    export interface RevealAllVeilsResponse {
+      messageIds: MessageId[];
+      count: number;
     }
 
     // ---- 房间 ----
 
     /** POST /api/spaces/:spaceId/rooms */
-    interface CreateRoomRequest {
+    export interface CreateRoomRequest {
       name: string;
       type: Room.Type;
       description?: string;
       sortOrder?: number;
+      visibleUserIds?: UserId[];
     }
 
     /** GET /api/spaces/:spaceId/rooms */
-    interface RoomsListResponse {
+    export interface RoomsListResponse {
       rooms: RoomSummary[];
     }
 
-    interface RoomSummary {
+    export interface RoomSummary {
       roomId: RoomId;
       spaceId: SpaceId;
       name: string;
@@ -577,52 +745,53 @@ export namespace Narratable {
       lastActiveAt: Timestamp;
     }
 
-    /** PATCH /api/rooms/:roomId */
-    interface UpdateRoomRequest {
+    /** PATCH /api/spaces/:spaceId/rooms/:roomId */
+    export interface UpdateRoomRequest {
       name?: string;
       description?: string;
       sortOrder?: number;
+      visibleUserIds?: UserId[];
     }
 
-    /** POST /api/rooms/:roomId/join */
-    interface JoinRoomRequest {
+    /** POST /api/spaces/:spaceId/rooms/:roomId/join */
+    export interface JoinRoomRequest {
       maskId?: MaskId;
       code?: string;  // 房间密码（有密码的房间必填）
     }
 
-    interface JoinRoomResponse {
+    export interface JoinRoomResponse {
       roomId: RoomId;
       memberCount: number;
       joinedAt: Timestamp;
     }
 
-    /** POST /api/rooms/:roomId/leave */
-    interface LeaveRoomResponse {
+    /** POST /api/spaces/:spaceId/rooms/:roomId/leave */
+    export interface LeaveRoomResponse {
       roomId: RoomId;
       memberCount: number;
     }
 
     /** POST /api/spaces/:spaceId/rooms — 响应 */
-    interface CreateRoomResponse {
+    export interface CreateRoomResponse {
       room: Room;
       joinCode: string;  // 6位数字密码，仅在创建/重置时返回
     }
 
-    /** POST /api/rooms/:roomId/regenerate-code — 响应 */
-    interface RegenerateCodeResponse {
+    /** POST /api/spaces/:spaceId/rooms/:roomId/regenerate-code — 响应 */
+    export interface RegenerateCodeResponse {
       joinCode: string;
     }
 
     // ---- 消息 ----
 
     /**
-     * GET /api/rooms/:roomId/messages 的查询参数
+     * GET /api/spaces/:spaceId/rooms/:roomId/messages 的查询参数
      * 复用 Message.MessageQuery（roomId 来自 URL 路径）
      */
-    type MessagesQuery = Message.MessageQuery;
+    export type MessagesQuery = Message.MessageQuery;
 
     /** PATCH /api/messages/:messageId */
-    interface EditMessageRequest {
+    export interface EditMessageRequest {
       content?: Message.Block[];
       clue?: {
         title?: string;
@@ -630,6 +799,151 @@ export namespace Narratable {
         imageUrl?: string;
         tags?: string[];
       };
+    }
+
+    /** POST /api/messages/:messageId/pin */
+    export interface PinMessageRequest {
+      pinned: boolean;
+    }
+
+    /** POST /api/messages/:messageId/fold */
+    export interface FoldMessageRequest {
+      folded: boolean;
+    }
+
+    /** PATCH /api/messages/:messageId/veil */
+    export interface UpdateMessageVeilRequest {
+      visibility: Veil.Visibility;
+      visibleTo?: UserId[];
+    }
+
+    // ---- 面具 ----
+
+    /** POST /api/spaces/:spaceId/masks */
+    export interface CreateMaskRequest {
+      name?: string;
+      avatar?: string;
+      type: Mask.Type;
+      characterId?: CharacterId;
+    }
+
+    /** PATCH /api/spaces/:spaceId/masks/:maskId */
+    export interface UpdateMaskRequest {
+      name?: string;
+      avatar?: string;
+      userIds?: UserId[];
+    }
+
+    export interface MaskListResponse {
+      masks: Mask[];
+    }
+
+    // ---- 角色 ----
+
+    /** POST /api/spaces/:spaceId/characters */
+    export interface CreateCharacterRequest {
+      name: string;
+      avatar?: string;
+      type: Character.Type;
+      attributes?: Record<string, unknown>;
+      templateId?: string;
+      bio?: string;
+    }
+
+    /** PATCH /api/spaces/:spaceId/characters/:charId */
+    export interface UpdateCharacterRequest {
+      name?: string;
+      avatar?: string;
+      type?: Character.Type;
+      attributes?: Record<string, unknown>;
+      templateId?: string;
+      bio?: string;
+    }
+
+    export interface CreateCharacterResponse {
+      character: Character;
+      mask: Mask;
+    }
+
+    export interface CharacterListResponse {
+      characters: Character[];
+    }
+
+    // ---- 私聊 ----
+
+    /** GET /api/dm/:targetUserID */
+    export interface DirectMessageRoomResponse {
+      room: Room;
+    }
+
+    // ---- 资源 ----
+
+    /** POST /api/spaces/:spaceId/resources */
+    export interface CreateResourceRequest {
+      name: string;
+      kind: Resource.Kind;
+      uri: string;
+      roomId?: RoomId;
+      messageId?: MessageId;
+      mimeType?: string;
+      sizeBytes?: number;
+      checksum?: string;
+      metadata?: Record<string, unknown>;
+    }
+
+    /** GET /api/spaces/:spaceId/resources */
+    export interface ResourceListResponse {
+      resources: Resource[];
+    }
+
+    // ---- 插件与规则 ----
+
+    /** GET /api/plugins/defaults */
+    export interface PluginListResponse {
+      plugins: Plugin[];
+    }
+
+    /** GET /api/plugin-rule-templates/defaults */
+    export interface RuleTemplateListResponse {
+      templates: RuleTemplate[];
+    }
+
+    /** POST /api/spaces/:spaceId/plugin-rules/from-template */
+    export interface ApplyRuleTemplateRequest {
+      templateId: string;
+      name?: string;
+    }
+
+    // ---- 管理员插件管理 ----
+
+    /** POST /admin/plugins */
+    export interface CreateAdminPluginRequest {
+      name: string;
+      displayName: string;
+      version: string;
+      description?: string;
+      author?: string;
+      source: string;
+      characterDataType?: string;
+      configSchema?: string;
+      enabled?: boolean;
+    }
+
+    /** PATCH /admin/plugins/:pluginId */
+    export interface UpdateAdminPluginRequest {
+      displayName?: string;
+      version?: string;
+      description?: string;
+      author?: string;
+      source?: string;
+      characterDataType?: string;
+      configSchema?: string;
+      enabled?: boolean;
+    }
+
+    /** GET /admin/plugins */
+    export interface AdminPluginListResponse {
+      plugins: Plugin[];
     }
   }
 
@@ -640,7 +954,7 @@ export namespace Narratable {
 
   export namespace WS {
     /** 发送聊天消息 */
-    interface SendChat {
+    export interface SendChat {
       type: "chat";
       roomId: RoomId;
       spaceId: SpaceId;
@@ -650,7 +964,7 @@ export namespace Narratable {
     }
 
     /** 发送指令消息（含骰点） */
-    interface SendCommand {
+    export interface SendCommand {
       type: "command";
       roomId: RoomId;
       spaceId: SpaceId;
@@ -661,7 +975,7 @@ export namespace Narratable {
     }
 
     /** 发送线索消息 */
-    interface SendClue {
+    export interface SendClue {
       type: "clue";
       roomId: RoomId;
       spaceId: SpaceId;
@@ -673,6 +987,8 @@ export namespace Narratable {
       };
       maskId?: MaskId;
     }
+
+    export type ClientMessage = SendChat | SendCommand | SendClue;
   }
 
 } // end namespace Narratable
