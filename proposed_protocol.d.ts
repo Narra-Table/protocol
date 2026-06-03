@@ -19,7 +19,6 @@ export namespace Narratable {
 
   export type UserId = string;
   export type MaskId = string;
-  export type CharacterId = string;
   export type CharacterCardId = string;
 
   export type SpaceId = string;
@@ -169,7 +168,7 @@ export namespace Narratable {
   } // end namespace CharacterCard
 
   export interface CharacterCard {
-    characterId: CharacterCardId;
+    id: CharacterCardId;
     /** 所属面具 ID */
     maskId: MaskId;
     /** 卡名，如 "DND 5e"、"CoC 7th"（与 space.ruleType 匹配） */
@@ -595,7 +594,7 @@ export namespace Narratable {
   export interface VeilRevealed extends Base {
     type: "veil.revealed";
     messageIds: MessageId[];
-    reason: "space_closed";
+    reason?: string;
   }
 
   /** 成员加入房间 */
