@@ -42,12 +42,15 @@ const ws: Narratable.WS.SendChat = {
   type: "chat",
   roomId: "...",
   spaceId: "...",
+  sender: { maskId: "..." },
   content: [{ type: "paragraph", children: [{ type: "text", text: "..." }] }]
 };
 
-// WebSocket 事件（服务端推送）
+// WebSocket 服务端推送：
+// - 新建消息 ACK/广播为完整 Message
+// - 编辑/删除/公开帷幕为 Event
 const evt: Narratable.Event = {
-  type: "message.created",
+  type: "message.updated",
   spaceId: "...",
   timestamp: "...",
   message: { ... }

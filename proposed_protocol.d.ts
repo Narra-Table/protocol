@@ -575,6 +575,7 @@ export namespace Narratable {
   }
 
   export interface Created extends Base {
+    /** 当前 Go 后端创建消息时推送完整 Message；该事件类型保留给后续统一事件包装。 */
     type: "message.created";
     message: Message;
   }
@@ -996,14 +997,36 @@ export namespace Narratable {
   // ============================================================
 
   export namespace WS {
+    export interface Auth {
+      type: "system";
+      command: "auth";
+      raw: string;
+    }
+
+    export interface AuthResult {
+      type: "system";
+      command: "auth_result";
+      result: Message.Result & {
+        data?: {
+          userId: UserId;
+        };
+      };
+    }
+
+    export interface Sender {
+      /** 发言面具；服务端会用认证会话覆盖 sender.userId。 */
+      maskId: MaskId;
+    }
+
     /** 发送聊天消息 */
     export interface SendChat {
       type: "chat";
       roomId: RoomId;
       spaceId: SpaceId;
+      sender: Sender;
       content: Message.Block[];
-      maskId?: MaskId;
       refMessageId?: MessageId;
+      veil?: Veil;
     }
 
     /** 发送指令消息（含骰点） */
@@ -1011,10 +1034,11 @@ export namespace Narratable {
       type: "command";
       roomId: RoomId;
       spaceId: SpaceId;
+      sender: Sender;
       command: string;
       params: Message.Param[];
       raw: string;
-      maskId?: MaskId;
+      veil?: Veil;
     }
 
     /** 发送线索消息 */
@@ -1022,16 +1046,30 @@ export namespace Narratable {
       type: "clue";
       roomId: RoomId;
       spaceId: SpaceId;
+      sender: Sender;
       clue: {
         title: string;
         description: string;
         imageUrl?: string;
         tags: string[];
+        isDiscovered?: boolean;
       };
-      maskId?: MaskId;
+      veil?: Veil;
     }
 
-    export type ClientMessage = SendChat | SendCommand | SendClue;
+    /** 发送合并转发消息 */
+    export interface SendForward {
+      type: "forward";
+      roomId: RoomId;
+      spaceId: SpaceId;
+      sender: Sender;
+      forward: ForwardContent;
+      veil?: Veil;
+    }
+
+    export type ClientMessage = Auth | SendChat | SendCommand | SendClue | SendForward;
+    /** 服务端创建消息 ACK/广播为完整 Message；编辑/删除/公开帷幕为 Event。 */
+    export type ServerMessage = AuthResult | Message | Event;
   }
 
 } // end namespace Narratable
