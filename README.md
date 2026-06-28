@@ -1,6 +1,6 @@
 # @narratable/protocol
 
-故桌 (Narratable) 接口协议 v1 — 共享 TypeScript 类型定义。
+故桌 (Narratable) 接口协议 v2 — 共享 TypeScript 类型定义。
 
 桌面端和移动端前端团队的单一事实来源。
 
@@ -64,7 +64,7 @@ const evt: Narratable.Event = {
   │              │
   ├─ 成员(Member)  ├─ 会话房 / 资料房 / 私密房 / 工具房
   ├─ 面具(Mask)    └─ 实时消息流 + 帷幕可见性
-  ├─ 角色(Character)
+  ├─ 角色卡(CharacterCard)
   └─ 帷幕(Veil)绑定在消息上
 ```
 
@@ -75,7 +75,7 @@ Narratable
 ├── Space / Space.Role / Space.Member  — 空间与成员
 ├── Room / Room.Type                   — 房间与类型
 ├── Mask / Mask.Type                   — 面具（发言身份）
-├── Character                         — 角色卡
+├── CharacterCard                     — 角色卡
 ├── Veil / Veil.Visibility            — 帷幕（可见性）
 ├── Message / Message.Type            — 消息本体
 │   ├── Message.Block[]               — 块级元素
@@ -96,7 +96,7 @@ Narratable
 | `Narratable.Space` | `pkg/protocol/space.go` |
 | `Narratable.Room` | `pkg/protocol/room.go` |
 | `Narratable.Mask` | `pkg/protocol/mask.go` |
-| `Narratable.Character` | `pkg/protocol/character.go` |
+| `Narratable.CharacterCard` | `pkg/protocol/character_card.go` |
 | `Narratable.Veil` | `pkg/protocol/veil.go` |
 | `Narratable.Message` | `pkg/protocol/message.go` |
 | `Narratable.Event` | `pkg/protocol/events.go` |
@@ -107,7 +107,7 @@ Narratable
 
 ## 版本策略
 
-- 主版本号 = 协议大版本（当前 v1）
+- 主版本号 = 协议大版本（当前 v2 文档；npm 包版本仍按实际发布节奏维护）
 - 次版本号 = 新增类型/字段（向后兼容）
 - 修订号 = 注释/文档修正
 
