@@ -564,13 +564,16 @@ export namespace Narratable {
     | "message.created"
     | "message.updated"
     | "message.deleted"
-    | "member.joined"
-    | "member.left"
+    | "message.rejected"
+    | "auth.result"
+    | "presence.joined"
+    | "presence.left"
     | "veil.revealed";
 
   export interface Base {
     type: Type;
-    spaceId: SpaceId;
+    requestId?: string;
+    spaceId?: SpaceId;
     timestamp: Timestamp;
   }
 
@@ -597,22 +600,52 @@ export namespace Narratable {
     reason?: string;
   }
 
-  /** 成员加入房间 */
-  export interface MemberJoined extends Base {
-    type: "member.joined";
-    roomId: RoomId;
-    member: {
-      userId: UserId;
-      maskId?: MaskId;
-      displayName: string;
+  export type ErrorCode =
+    | "invalid_command"
+    | "unauthenticated"
+    | "unauthorized"
+    | "account_inactive"
+    | "room_not_found"
+    | "invalid_message"
+    | "persistence_failed"
+    | "connection_limit";
+
+  export interface Error {
+    code: ErrorCode;
+    message: string;
+  }
+
+  export interface Rejected extends Base {
+    type: "message.rejected";
+    requestId: string;
+    error: Error;
+  }
+
+  export interface AuthResult extends Base {
+    type: "auth.result";
+    auth: {
+      success: boolean;
+      userId?: UserId;
+      error?: Error;
     };
   }
 
-  /** 成员离开房间 */
-  export interface MemberLeft extends Base {
-    type: "member.left";
-    roomId: RoomId;
-    userId: UserId;
+  export interface Presence extends Base {
+    type: "presence.joined" | "presence.left";
+    presence: {
+      roomId: RoomId;
+      userId: UserId;
+      connectionId: string;
+      occurredAt: Timestamp;
+    };
+  }
+
+  export interface PresenceJoined extends Presence {
+    type: "presence.joined";
+  }
+
+  export interface PresenceLeft extends Presence {
+    type: "presence.left";
   }
 
   // ============================================================
@@ -623,8 +656,10 @@ export namespace Narratable {
     | Event.Created
     | Event.Updated
     | Event.Deleted
-    | Event.MemberJoined
-    | Event.MemberLeft
+    | Event.Rejected
+    | Event.AuthResult
+    | Event.PresenceJoined
+    | Event.PresenceLeft
     | Event.VeilRevealed;
 
   // ============================================================
@@ -650,9 +685,12 @@ export namespace Narratable {
 
     /** POST /auth/register */
     export interface RegisterRequest {
-      email: string;
+      username: string;
       password: string;
-      code: string;
+      /** Required only when deployment capabilities report email verification. */
+      email?: string;
+      /** Required only when deployment capabilities report email verification. */
+      code?: string;
     }
 
     /** POST /auth/send-code */
@@ -669,6 +707,12 @@ export namespace Narratable {
     export interface ResetPasswordRequest {
       email: string;
       code: string;
+      newPassword: string;
+    }
+
+    /** POST /auth/change-password */
+    export interface UserPasswordChangeRequest {
+      currentPassword: string;
       newPassword: string;
     }
 
@@ -782,7 +826,6 @@ export namespace Narratable {
       name: string;
       type: Room.Type;
       sortOrder: number;
-      hasJoinCode: boolean;
       isArchived: boolean;
       lastMessage?: {
         senderName: string;
@@ -803,10 +846,7 @@ export namespace Narratable {
     }
 
     /** POST /api/spaces/:spaceId/rooms/:roomId/join */
-    export interface JoinRoomRequest {
-      maskId?: MaskId;
-      code?: string;  // 房间密码（有密码的房间必填）
-    }
+    export interface JoinRoomRequest {}
 
     export interface JoinRoomResponse {
       roomId: RoomId;
@@ -823,12 +863,6 @@ export namespace Narratable {
     /** POST /api/spaces/:spaceId/rooms — 响应 */
     export interface CreateRoomResponse {
       room: Room;
-      joinCode: string;  // 6位数字密码，仅在创建/重置时返回
-    }
-
-    /** POST /api/spaces/:spaceId/rooms/:roomId/regenerate-code — 响应 */
-    export interface RegenerateCodeResponse {
-      joinCode: string;
     }
 
     // ---- 消息 ----
@@ -996,42 +1030,28 @@ export namespace Narratable {
   // ============================================================
 
   export namespace WS {
-    /** 发送聊天消息 */
-    export interface SendChat {
-      type: "chat";
-      roomId: RoomId;
-      spaceId: SpaceId;
-      content: Message.Block[];
-      maskId?: MaskId;
-      refMessageId?: MessageId;
+    export interface Auth {
+      type: "auth";
+      accessToken: string;
     }
 
-    /** 发送指令消息（含骰点） */
-    export interface SendCommand {
-      type: "command";
+    /** The only business-message send shape. Persisted Message fields are server-owned. */
+    export interface MessageSend {
+      type: "message.send";
+      requestId: string;
       roomId: RoomId;
-      spaceId: SpaceId;
-      command: string;
-      params: Message.Param[];
-      raw: string;
-      maskId?: MaskId;
+      senderMaskId?: MaskId;
+      messageType: "chat" | "clue" | "command" | "forward";
+      content?: Message.Block[];
+      clue?: Message extends { clue?: infer C } ? C : never;
+      forward?: ForwardContent;
+      command?: string;
+      params?: Message.Param[];
+      raw?: string;
+      veil?: Veil;
     }
 
-    /** 发送线索消息 */
-    export interface SendClue {
-      type: "clue";
-      roomId: RoomId;
-      spaceId: SpaceId;
-      clue: {
-        title: string;
-        description: string;
-        imageUrl?: string;
-        tags: string[];
-      };
-      maskId?: MaskId;
-    }
-
-    export type ClientMessage = SendChat | SendCommand | SendClue;
+    export type Command = Auth | MessageSend;
   }
 
 } // end namespace Narratable
