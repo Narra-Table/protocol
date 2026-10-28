@@ -1,6 +1,6 @@
 # @narratable/protocol
 
-故桌 (Narratable) 接口协议 v1 — 共享 TypeScript 类型定义。
+故桌（NarraTable）接口协议 v1 — 共享 TypeScript 类型定义。
 
 桌面端和移动端前端团队的单一事实来源。
 
