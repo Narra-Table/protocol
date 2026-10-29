@@ -1,6 +1,6 @@
 /**
  * ============================================================
- *  故桌 (Narratable) 接口协议 v1
+ *  故桌（NarraTable）接口协议 v1
  *  基于《故桌产品策划案（初稿）》的精简设计
  * ============================================================
  *
@@ -173,8 +173,12 @@ export namespace Narratable {
     maskId: MaskId;
     /** 卡名，如 "DND 5e"、"CoC 7th"（与 space.ruleType 匹配） */
     name: string;
+    ruleId?: RuleId;
+    ruleVersion?: string;
     /** 规则无关的角色属性（不同规则系统自行定义结构） */
     attributes: Record<string, unknown>;
+    /** 不透明的规则插件角色数据 */
+    data?: Record<string, unknown>;
     /** 角色模板 ID */
     templateId?: string;
     createdAt: Timestamp;
@@ -239,14 +243,7 @@ export namespace Narratable {
     content?: Message.Block[];
 
     /** clue 类型：线索数据 */
-    clue?: {
-      title: string;
-      description: string;
-      imageUrl?: string;
-      tags: string[];
-      /** 是否已被发现 */
-      isDiscovered: boolean;
-    };
+    clue?: Message.Clue;
 
     /** command 类型：指令名 */
     command?: string;
@@ -297,6 +294,16 @@ export namespace Narratable {
   export interface Param {
     name: string;
     value: string;
+  }
+
+  /** 线索数据 */
+  export interface Clue {
+    title: string;
+    description: string;
+    imageUrl?: string;
+    tags: string[];
+    /** 是否已被发现 */
+    isDiscovered: boolean;
   }
 
   /** 指令执行结果 */
@@ -401,6 +408,12 @@ export namespace Narratable {
     italic?: boolean;
     underline?: boolean;
     strikethrough?: boolean;
+    /** 文字颜色：主题色名或 #rrggbb，存储时小写；省略表示正文色 */
+    color?: string;
+    /** 文字底色，规则与 color 相同 */
+    background?: string;
+    /** 盖在这段文字上的注音；非空时不与相邻节点合并 */
+    ruby?: string;
   }
 
   /** @提及行内元素 */
@@ -462,8 +475,12 @@ export namespace Narratable {
     depth: number;
   }
 
-  /** 单条被转发消息 */
+  /** 单条被转发消息。新写入的是来源消息在转发时刻的完整拷贝。 */
   export interface ForwardedMessage {
+    /** 这份转发内部的顺序，从 1 开始；不复制来源房间的序号 */
+    seq?: number;
+    /** 拷贝也对应一条真实消息时存在，与来源消息 ID 不同 */
+    messageId?: MessageId;
     /** 原始消息 ID（引用模式时存在） */
     sourceMessageId?: MessageId;
     /** 原始房间 ID */
@@ -472,7 +489,20 @@ export namespace Narratable {
     senderName: string;
     avatarId: string;
     type: string;
-    blocks: Message.Block[];
+    /** chat / system 类型的正文拷贝 */
+    blocks?: Message.Block[];
+    /** clue 类型的线索拷贝 */
+    clue?: Message.Clue;
+    /** command 类型：指令名 */
+    command?: string;
+    /** command 类型：指令参数 */
+    params?: Message.Param[];
+    /** command 类型：原始指令文本 */
+    raw?: string;
+    /** command 类型：执行结果 */
+    result?: Message.Result;
+    /** 拷贝时的帷幕 */
+    veil?: Veil;
     timestamp: Timestamp;
     /** 递归：转发内嵌转发 */
     forward?: ForwardContent;
@@ -530,12 +560,216 @@ export namespace Narratable {
     description: string;
     author: string;
     source: string;
+    rule?: RuleDecl;
+    pluginRule?: PluginRuleSpec;
+    namespace?: string;
     characterDataType?: string;
+    character?: CharacterDescriptor;
+    config?: ConfigDecl[];
     configSchema?: Record<string, unknown>;
+    depends?: PluginDependency[];
+    windows?: PluginWindow[];
+    integrity?: string;
     builtIn: boolean;
     enabled: boolean;
     createdAt: Timestamp;
     updatedAt: Timestamp;
+  }
+
+  export interface PluginWindow {
+    id: string;
+    title: string;
+    icon?: string;
+    visibility?: "all" | "gm_only";
+    entry: string;
+    defaultWidth?: number;
+    defaultDisplay?: "normal" | "maximized" | "minimized" | "floating";
+    chrome?: "full" | "titlebar-hidden";
+    floating?: boolean;
+    modal?: boolean;
+    singleton?: boolean;
+    embeddable: boolean;
+    launcher: boolean;
+    resizable: boolean;
+    dismissible: boolean;
+  }
+
+  export interface PluginPackageInfo {
+    name: string;
+    displayName: string;
+    version: string;
+    description: string;
+    author: string;
+    rule?: RuleDecl;
+    pluginRule?: PluginRuleSpec;
+    characterDataType?: string;
+    depends?: PluginDependency[];
+    windows?: PluginWindow[];
+    config?: ConfigDecl[];
+    character?: CharacterDescriptor;
+    files?: PackageFile[];
+    integrity?: string;
+    format?: number;
+  }
+
+  export interface RuleDecl {
+    id: RuleId;
+    name: string;
+  }
+
+  export interface PluginRuleSpec {
+    rule: RuleId;
+    constraint: string;
+    namespace?: string;
+  }
+
+  export interface PluginDependency {
+    id: PluginId | RuleId;
+    constraint?: string;
+  }
+
+  export interface PackageFile {
+    path: string;
+    bytes: number;
+    sha256: string;
+  }
+
+  export interface RuleVersion {
+    ruleId: RuleId;
+    name: string;
+    version: string;
+    pluginId: PluginId;
+    namespace?: string;
+    integrity?: string;
+    yanked: boolean;
+    createdAt: Timestamp;
+  }
+
+  export interface RuleCatalogEntry {
+    ruleId: RuleId;
+    name: string;
+    versions: RuleVersion[];
+  }
+
+  export interface SpaceRuleBinding {
+    spaceId: SpaceId;
+    ruleId: RuleId;
+    ruleName: string;
+    version: string;
+    constraint: string;
+    integrity?: string;
+    pluginId: PluginId;
+    createdAt: Timestamp;
+  }
+
+  export interface SpacePluginLock {
+    pluginId: PluginId;
+    name: string;
+    version: string;
+    namespace?: string;
+    integrity?: string;
+    enabled: boolean;
+    sortOrder: number;
+    createdAt: Timestamp;
+  }
+
+  export interface SpaceRuntime {
+    spaceId: SpaceId;
+    rule?: SpaceRuleBinding;
+    plugins: SpacePluginLock[];
+  }
+
+  export type ConfigScope = "global" | "user" | "workspace";
+  export type ConfigValueType = "string" | "int" | "float" | "bool" | "template" | "option";
+
+  export interface ConfigSource {
+    scope: ConfigScope;
+    key: string;
+  }
+
+  export interface ConfigOption {
+    id: string;
+    name: string;
+    source: ConfigSource;
+  }
+
+  export interface ConfigDecl {
+    key: string;
+    name: string;
+    group?: string;
+    type: ConfigValueType | "selector";
+    scope: ConfigScope;
+    default?: unknown;
+    valueType?: ConfigValueType;
+    options?: ConfigOption[];
+    pluginId?: PluginId;
+    namespace?: string;
+  }
+
+  export interface ConfigDescription {
+    declaration: ConfigDecl;
+    option?: string;
+    value?: unknown;
+    source?: ConfigSource;
+    anomaly?: string;
+  }
+
+  export type CharacterFieldType = "text" | "number" | "boolean" | "select" | "list" | "object";
+
+  export interface CharacterOption {
+    value: string;
+    label: string;
+  }
+
+  export interface CharacterField {
+    key: string;
+    label: string;
+    type: CharacterFieldType;
+    group?: string;
+    description?: string;
+    default?: unknown;
+    required?: boolean;
+    options?: CharacterOption[];
+    min?: number;
+    max?: number;
+  }
+
+  export interface CharacterGroup {
+    key: string;
+    label: string;
+  }
+
+  export interface CharacterDescriptor {
+    ruleId: RuleId;
+    ruleVersion?: string;
+    name: string;
+    description?: string;
+    groups?: CharacterGroup[];
+    fields: CharacterField[];
+    defaults?: Record<string, unknown>;
+  }
+
+  export interface ValidationError {
+    field?: string;
+    code?: string;
+    message: string;
+  }
+
+  export interface CharacterReadRequest {
+    maskId: MaskId;
+    cardId?: CharacterCardId;
+  }
+
+  export interface CharacterWriteRequest {
+    maskId: MaskId;
+    cardId?: CharacterCardId;
+    data: Record<string, unknown>;
+    patch?: boolean;
+  }
+
+  export interface CharacterWriteResult {
+    card: CharacterCard;
+    validation?: ValidationError[];
   }
 
   export interface PluginRule {
@@ -750,6 +984,9 @@ export namespace Narratable {
     export interface CreateSpaceRequest {
       name: string;
       description?: string;
+      ruleId?: RuleId;
+      ruleVersion?: string;
+      ruleConstraint?: string;
     }
 
     /** GET /api/spaces */
@@ -760,6 +997,7 @@ export namespace Narratable {
     export interface SpaceSummary {
       spaceId: SpaceId;
       name: string;
+      description: string;
       ownerId: UserId;
       memberCount: number;
       status: "active" | "archived";
@@ -932,6 +1170,7 @@ export namespace Narratable {
       /** 卡名，如 "DND 5e" */
       name: string;
       attributes?: Record<string, unknown>;
+      data?: Record<string, unknown>;
       templateId?: string;
     }
 
@@ -939,6 +1178,7 @@ export namespace Narratable {
     export interface UpdateCharacterCardRequest {
       name?: string;
       attributes?: Record<string, unknown>;
+      data?: Record<string, unknown>;
       templateId?: string;
     }
 
@@ -991,6 +1231,34 @@ export namespace Narratable {
       name?: string;
     }
 
+    /** GET /api/rules */
+    export interface RuleCatalogListResponse {
+      rules: RuleCatalogEntry[];
+    }
+
+    /** GET /api/spaces/:spaceId/plugin-runtime */
+    export type SpaceRuntimeResponse = SpaceRuntime;
+
+    /** GET /api/spaces/:spaceId/character-descriptor */
+    export type CharacterDescriptorResponse = CharacterDescriptor;
+
+    /** GET /api/spaces/:spaceId/config/:appId */
+    export interface ConfigListResponse {
+      configs: ConfigDescription[];
+    }
+
+    /** PUT /api/spaces/:spaceId/config/:appId/:key */
+    export interface SetConfigRequest {
+      value?: unknown;
+      option?: string;
+    }
+
+    /** GET /api/spaces/:spaceId/config/:appId/:key/raw */
+    export interface RawConfigResponse {
+      value?: unknown;
+      set: boolean;
+    }
+
     // ---- 管理员插件管理 ----
 
     /** POST /admin/plugins */
@@ -1021,6 +1289,16 @@ export namespace Narratable {
     /** GET /admin/plugins */
     export interface AdminPluginListResponse {
       plugins: Plugin[];
+    }
+
+    /** GET /admin/rules */
+    export interface AdminRuleCatalogResponse {
+      rules: RuleCatalogEntry[];
+    }
+
+    /** PATCH /admin/rules/:ruleId/versions/:version */
+    export interface SetRuleYankedRequest {
+      yanked: boolean;
     }
   }
 
