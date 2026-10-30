@@ -13,6 +13,47 @@
  */
 
 export namespace Narratable {
+
+  /** The host injects ntpWindow into each sandboxed iframe before plugin code. */
+  export type WindowMethod =
+    | "hello" | "subscribe" | "resource.url" | "invoke"
+    | "config.get" | "config.select" | "config.describe" | "config.raw" | "config.set"
+    | "character.describe" | "character.list" | "character.read" | "character.write"
+    | "data.get" | "data.list"
+    | "window.open" | "window.close" | "window.closeDecision"
+    | "window.getState" | "window.setState" | "window.setTitle" | "window.setIcon"
+    | "window.setAttention" | "window.postMessage" | "window.broadcast" | "keyboard";
+
+  export type WindowEvent =
+    | "visibility" | "beforeClose" | "theme" | "window.message"
+    | "config.updated" | "appdata.updated" | "character.updated" | "message.created";
+
+  export interface WindowInit {
+    spaceId: string;
+    roomId?: string;
+    instanceId: string;
+    user: { userId: string; displayName: string; role: "gm" | "agm" | "pl" | "ob"; isOwner: boolean };
+    rule?: { ruleId?: string; ruleName?: string; version?: string; pluginId?: string };
+    archived: boolean;
+    params?: unknown;
+    /** Per-instance view state. Null on first open; separate from launch params. */
+    state: unknown | null;
+    theme: Record<string, string>;
+  }
+
+  export type WindowBridgeMessage =
+    | { ntp: 1; kind: "request"; id: string; method: WindowMethod; params?: unknown }
+    | { ntp: 1; kind: "response"; id: string; ok: true; result: unknown }
+    | { ntp: 1; kind: "response"; id: string; ok: false; error: { code: string; message: string } }
+    | { ntp: 1; kind: "event"; event: WindowEvent; payload: unknown };
+
+  export interface WindowBridge {
+    ready: Promise<WindowInit>;
+    /** JSON envelopes <=32KB, at most 32 outstanding requests. */
+    request<T = unknown>(method: WindowMethod, params?: unknown): Promise<T>;
+    on(event: WindowEvent, callback: (payload: unknown) => void): () => void;
+  }
+
   // ============================================================
   //  一、基础 ID 和通用类型
   // ============================================================
@@ -81,6 +122,8 @@ export namespace Narratable {
     masks: MaskId[];
     /** active: 跑团中 / archived: 已结团 */
     status: "active" | "archived";
+    /** 骰点日志房。必须是本空间的工具房；空表示不抄送。 */
+    diceLogRoomId?: RoomId;
     /** 从模组导入时的来源 */
     moduleSource?: { moduleId: string; moduleName: string };
     createdAt: Timestamp;
@@ -217,6 +260,8 @@ export namespace Narratable {
     roomId: RoomId;
     spaceId: SpaceId;
     type: Message.Type;
+    /** 显示顺序。seq 仍是到达顺序。 */
+    position?: string;
 
     /** 发送者 */
     sender: {
@@ -444,8 +489,46 @@ export namespace Narratable {
     cursor: MessageId | null;
     limit: number;
     sort: "asc" | "desc";
+    /** seq：到达顺序。position：显示顺序。资料房默认 position。 */
+    order?: "seq" | "position";
     pinnedOnly?: boolean;
     maskId?: MaskId;
+  }
+
+  export interface MoveMessageRequest {
+    /** 二选一。 */
+    after?: MessageId;
+    before?: MessageId;
+  }
+
+  export interface SceneMarker {
+    messageId: MessageId;
+    label: string;
+    position: string;
+    seq: number;
+    messageCount: number;
+  }
+
+  export interface CluePage {
+    clues: Message[];
+    nextCursor?: MessageId;
+    hasMore: boolean;
+  }
+
+  export interface CardRevision {
+    id: string;
+    cardId: CharacterCardId;
+    actorId: UserId;
+    /** manual | command | invoke */
+    source: "manual" | "command" | "invoke";
+    before: Record<string, unknown>;
+    after: Record<string, unknown>;
+    createdAt: Timestamp;
+  }
+
+  export interface CloseReport {
+    plugin: string;
+    text: string;
   }
 
   export interface PaginatedMessages {
@@ -798,11 +881,22 @@ export namespace Narratable {
     | "message.created"
     | "message.updated"
     | "message.deleted"
+    | "message.moved"
     | "message.rejected"
     | "auth.result"
     | "presence.joined"
     | "presence.left"
-    | "veil.revealed";
+    | "veil.revealed"
+    | "connection.gap"
+    | "mention.created"
+    | "room.read"
+    | "character.updated"
+    | "config.updated"
+    | "appdata.updated"
+    | "runtime.updated"
+    | "window.open"
+    | "space.updated"
+    | "room.updated";
 
   export interface Base {
     type: Type;
@@ -827,9 +921,15 @@ export namespace Narratable {
     roomId: RoomId;
   }
 
+  export interface Moved extends Base {
+    type: "message.moved";
+    message: Message;
+  }
+
   /** 帷幕公开事件（结团后自动公开） */
   export interface VeilRevealed extends Base {
     type: "veil.revealed";
+    roomId: RoomId;
     messageIds: MessageId[];
     reason?: string;
   }
@@ -842,7 +942,8 @@ export namespace Narratable {
     | "room_not_found"
     | "invalid_message"
     | "persistence_failed"
-    | "connection_limit";
+    | "connection_limit"
+    | "space_archived";
 
   export interface Error {
     code: ErrorCode;
@@ -882,19 +983,106 @@ export namespace Narratable {
     type: "presence.left";
   }
 
+  export interface MentionCreated extends Base {
+    type: "mention.created";
+    mention: {
+      userId: UserId;
+      messageId: MessageId;
+      roomId: RoomId;
+      spaceId: SpaceId;
+    };
+  }
+
+  /** 同一用户的其他设备同步已读游标 */
+  export interface RoomRead extends Base {
+    type: "room.read";
+    read: {
+      roomId: RoomId;
+      spaceId: SpaceId;
+      seq: number;
+    };
+  }
+
+  export interface CharacterUpdated extends Base {
+    type: "character.updated";
+    character: {
+      /** 面具变更时为空字符串；卡更新或删除时为卡 ID。按权限补读。 */
+      cardId: CharacterCardId;
+      maskId: MaskId;
+      spaceId: SpaceId;
+    };
+  }
+
+  export interface ConfigUpdated extends Base {
+    type: "config.updated";
+    config: {
+      appId: string;
+      key: string;
+      scope: "global" | "user" | "workspace";
+      spaceId: SpaceId;
+    };
+  }
+
+  /** 通用存储提交后通知开着的窗口自己再读，不带值 */
+  export interface AppDataUpdated extends Base {
+    type: "appdata.updated";
+    appData: {
+      appId: string;
+      key: string;
+      roomId?: RoomId;
+    };
+  }
+
+  /** 空间插件锁变化，前端重新拉取应用注册表 */
+  export interface RuntimeUpdated extends Base {
+    type: "runtime.updated";
+    runtime: { spaceId: SpaceId };
+  }
+
+  /** 只推给发起调用的用户，让前端按窗口规则打开 */
+  export interface WindowOpen extends Base {
+    type: "window.open";
+    roomId?: RoomId;
+    window: {
+      appId: string;
+      windowId: string;
+      params?: unknown;
+    };
+  }
+
+  export interface SpaceUpdated extends Base {
+    type: "space.updated";
+    space: { spaceId: SpaceId; status: "active" | "archived" };
+  }
+
+  export interface RoomUpdated extends Base {
+    type: "room.updated";
+    roomId: RoomId;
+  }
+
   // ============================================================
 
   } // end namespace Event
 
   export type Event =
+    | Event.SpaceUpdated
+    | Event.RoomUpdated
     | Event.Created
     | Event.Updated
     | Event.Deleted
+    | Event.Moved
     | Event.Rejected
     | Event.AuthResult
     | Event.PresenceJoined
     | Event.PresenceLeft
-    | Event.VeilRevealed;
+    | Event.VeilRevealed
+    | Event.MentionCreated
+    | Event.RoomRead
+    | Event.CharacterUpdated
+    | Event.ConfigUpdated
+    | Event.AppDataUpdated
+    | Event.RuntimeUpdated
+    | Event.WindowOpen;
 
   // ============================================================
   //  十三、REST API 请求/响应类型
@@ -1036,6 +1224,111 @@ export namespace Narratable {
       role: Space.Role;
     }
 
+    /** POST /api/spaces/:spaceId/close */
+    export interface CloseSpaceResponse {
+      status: "archived";
+      messageIds: MessageId[];
+      count: number;
+    }
+
+    /** POST /api/spaces/:spaceId/reopen */
+    export interface ReopenSpaceResponse {
+      status: "active";
+    }
+
+    /** POST /api/spaces/:spaceId/rooms/:roomId/read */
+    export interface MarkReadRequest {
+      seq: number;
+    }
+
+    export interface MarkReadResponse {
+      roomId: RoomId;
+      seq: number;
+    }
+
+    /** GET /api/spaces/:spaceId/apps */
+    export interface SpaceAppWindow {
+      id: string;
+      title: string;
+      singleton: boolean;
+      defaultWidth?: number;
+      visibility?: string;
+    }
+
+    export interface SpaceApp {
+      appId: string;
+      source: "builtin" | "ntp";
+      name: string;
+      version?: string;
+      status?: "available" | "disabled" | "incompatible";
+      windows: SpaceAppWindow[];
+    }
+
+    export interface SpaceAppList {
+      apps: SpaceApp[];
+    }
+
+    /** GET/PUT /api/spaces/:spaceId/workspace */
+    export interface WorkspaceDocument {
+      revision: number;
+      snapshot?: unknown;
+    }
+
+    /** POST /api/spaces/:spaceId/apps/:appId/invoke */
+    export interface InvokeRequest {
+      export: string;
+      args?: unknown[];
+      roomId?: RoomId;
+      windowInstanceId?: string;
+    }
+
+    export interface InvokeResponse {
+      result: unknown;
+      changes: { appId: string; key: string; roomId?: RoomId }[];
+    }
+
+    /** POST /api/spaces/:spaceId/plugins/:pluginId/upgrade */
+    export interface UpgradePluginRequest {
+      version: string;
+    }
+
+    /** POST /admin/rules/derive */
+    export interface DeriveRuleRequest {
+      baseRuleId: string;
+      baseVersion: string;
+      id: string;
+      name: string;
+      version: string;
+    }
+
+    export interface DerivedRule {
+      ruleId: string;
+      version: string;
+      name: string;
+      baseRuleId: string;
+      baseVersion: string;
+      baseIntegrity: string;
+      source: string;
+      integrity: string;
+    }
+
+    /** GET /api/bot-invocations/:id/data/:appId/:key */
+    export interface BotDataResponse {
+      value: unknown;
+    }
+
+    /** GET /api/bot-invocations/:id/storage/:key; JSON null is present when found=true. */
+    export interface BotStorageResponse { value: unknown; found: boolean; }
+    export interface BotDataWriteRequest { value: unknown; room?: boolean; visibility?: "all" | "gm_only"; }
+    export interface BotCharacterWriteRequest { data: Record<string, unknown>; }
+    export interface BotOpenWindowRequest { appId: string; windowId: string; params?: unknown; }
+    export interface BotExportRequest { args?: unknown[]; }
+
+    /** GET /api/bot-invocations/:id/config/:appId/:key */
+    export interface BotConfigResponse {
+      value: unknown;
+    }
+
     /** POST /api/spaces/:spaceId/reveal-all-veils */
     export interface RevealAllVeilsResponse {
       messageIds: MessageId[];
@@ -1071,6 +1364,7 @@ export namespace Narratable {
         sendTime: Timestamp;
       };
       unreadCount: number;
+      mentionCount: number;
       memberCount: number;
       lastActiveAt: Timestamp;
     }
@@ -1327,6 +1621,8 @@ export namespace Narratable {
       params?: Message.Param[];
       raw?: string;
       veil?: Veil;
+      /** 插到这条消息后面。不传则追加到显示顺序末尾。 */
+      insertAfter?: MessageId;
     }
 
     export type Command = Auth | MessageSend;
