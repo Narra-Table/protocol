@@ -1,0 +1,1303 @@
+{
+  "$defs": {
+    "AcceptedFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "auth.accepted"
+          ],
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "userId"
+      ],
+      "type": "object"
+    },
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "describe": {
+          "type": "string"
+        },
+        "handler": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "requiresLog": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "handler",
+        "requiresLog",
+        "describe"
+      ],
+      "type": "object"
+    },
+    "AuthFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "accessToken": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "auth"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "accessToken"
+      ],
+      "type": "object"
+    },
+    "BatchFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "changes": {
+          "$ref": "#/$defs/Changes"
+        },
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "sync.batch"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "syncId",
+        "before",
+        "after",
+        "changes"
+      ],
+      "type": "object"
+    },
+    "Block": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "items": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "text": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "type": {
+                    "enum": [
+                      "text"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "text"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "targetId": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "enum": [
+                      "mention"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "targetId"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "type": {
+          "enum": [
+            "paragraph"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "children"
+      ],
+      "type": "object"
+    },
+    "BridgeContext": {
+      "additionalProperties": false,
+      "properties": {
+        "plugin": {
+          "$ref": "#/$defs/Manifest"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "view": {
+          "$ref": "#/$defs/RoomView"
+        }
+      },
+      "required": [
+        "roomId",
+        "plugin",
+        "view"
+      ],
+      "type": "object"
+    },
+    "BridgeInvoke": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "room"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "kp"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "members"
+                  ],
+                  "type": "string"
+                },
+                "memberIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "memberIds"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "clientOperationId": {
+          "type": "string"
+        },
+        "structuredInput": {},
+        "targetAction": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "clientOperationId",
+        "targetAction",
+        "structuredInput"
+      ],
+      "type": "object"
+    },
+    "BridgeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "input": {},
+        "method": {
+          "enum": [
+            "context",
+            "query",
+            "invoke",
+            "subscribe",
+            "close"
+          ],
+          "type": "string"
+        },
+        "nonce": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "nonce",
+        "method",
+        "input"
+      ],
+      "type": "object"
+    },
+    "CanWriteSharedInput": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Changes": {
+      "additionalProperties": false,
+      "properties": {
+        "characters": {
+          "items": {
+            "$ref": "#/$defs/RoomCharacter"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/Message"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "removedMessageIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "messages",
+        "removedMessageIds",
+        "characters"
+      ],
+      "type": "object"
+    },
+    "CharacterValue": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {},
+        "revision": {
+          "type": "string"
+        },
+        "roomCharacterId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomCharacterId",
+        "revision",
+        "data"
+      ],
+      "type": "object"
+    },
+    "ChatCommandSubmit": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "room"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "kp"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "members"
+                  ],
+                  "type": "string"
+                },
+                "memberIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "memberIds"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "clientOperationId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "expectedPluginDigest": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "structuredInput": {},
+        "targetAction": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "clientOperationId",
+        "roomId",
+        "targetAction",
+        "structuredInput"
+      ],
+      "type": "object"
+    },
+    "CommandFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/ChatCommandSubmit"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "chat.command.submit"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "requestId",
+        "body"
+      ],
+      "type": "object"
+    },
+    "DrawInput": {
+      "additionalProperties": false,
+      "properties": {
+        "sides": {
+          "format": "int64",
+          "maximum": 1000000,
+          "minimum": 2,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sides"
+      ],
+      "type": "object"
+    },
+    "ErrorBody": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "requestId"
+      ],
+      "type": "object"
+    },
+    "HeartbeatFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint": {
+          "type": "string"
+        },
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "sync.heartbeat"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "syncId",
+        "checkpoint"
+      ],
+      "type": "object"
+    },
+    "Listener": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "type": "string"
+        },
+        "handler": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "event",
+        "handler"
+      ],
+      "type": "object"
+    },
+    "Manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/Action"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "contentDigest": {
+          "type": "string"
+        },
+        "contractVersion": {
+          "type": "string"
+        },
+        "dependencies": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "entry": {
+          "type": "string"
+        },
+        "implementationVersion": {
+          "type": "string"
+        },
+        "listeners": {
+          "items": {
+            "$ref": "#/$defs/Listener"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "pluginId": {
+          "type": "string"
+        },
+        "queries": {
+          "items": {
+            "$ref": "#/$defs/Query"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Window"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "pluginId",
+        "implementationVersion",
+        "contractVersion",
+        "schemaVersion",
+        "capabilities",
+        "actions",
+        "queries",
+        "windows",
+        "dependencies",
+        "contentDigest",
+        "entry"
+      ],
+      "type": "object"
+    },
+    "Message": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "room"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "kp"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "members"
+                  ],
+                  "type": "string"
+                },
+                "memberIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "memberIds"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "canDelete": {
+          "type": "boolean"
+        },
+        "canEdit": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "editedAt": {
+          "type": "string"
+        },
+        "invocationId": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "senderSnapshot": {
+          "$ref": "#/$defs/SenderSnapshot"
+        }
+      },
+      "required": [
+        "messageId",
+        "roomId",
+        "revision",
+        "senderSnapshot",
+        "blocks",
+        "audience",
+        "createdAt",
+        "canEdit",
+        "canDelete"
+      ],
+      "type": "object"
+    },
+    "MessageFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/MessageSubmit"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "message.submit"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "requestId",
+        "body"
+      ],
+      "type": "object"
+    },
+    "MessageSubmit": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "room"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "kp"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "members"
+                  ],
+                  "type": "string"
+                },
+                "memberIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "memberIds"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "clientOperationId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "presentation": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "avatarOverride": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "account"
+                  ],
+                  "type": "string"
+                },
+                "nameOverride": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "avatarOverride": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "roomCharacter"
+                  ],
+                  "type": "string"
+                },
+                "nameOverride": {
+                  "type": "string"
+                },
+                "roomCharacterId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "roomCharacterId"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "clientOperationId",
+        "roomId",
+        "presentation",
+        "blocks"
+      ],
+      "type": "object"
+    },
+    "Query": {
+      "additionalProperties": false,
+      "properties": {
+        "handler": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "handler"
+      ],
+      "type": "object"
+    },
+    "QueryInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedPluginDigest": {
+          "type": "string"
+        },
+        "input": {},
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "input"
+      ],
+      "type": "object"
+    },
+    "ReadCharacterInput": {
+      "additionalProperties": false,
+      "properties": {
+        "roomCharacterId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomCharacterId"
+      ],
+      "type": "object"
+    },
+    "Receipt": {
+      "additionalProperties": false,
+      "properties": {
+        "clientOperationId": {
+          "type": "string"
+        },
+        "invocationId": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "resourceId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "clientOperationId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ReceiptFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/ErrorBody"
+        },
+        "receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "operation.receipt"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "requestId"
+      ],
+      "type": "object"
+    },
+    "RejectedFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/ErrorBody"
+        },
+        "type": {
+          "enum": [
+            "auth.rejected"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "error"
+      ],
+      "type": "object"
+    },
+    "ReplyInput": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "ResyncFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "sync.resync_required"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "syncId",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "RevokedFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "subscription.revoked"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "syncId",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "RoomCharacter": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {},
+        "presentation": {
+          "$ref": "#/$defs/SenderSnapshot"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "roomCharacterId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "sourceCharacterId": {
+          "type": "string"
+        },
+        "sourceRevision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomCharacterId",
+        "roomId",
+        "sourceCharacterId",
+        "sourceRevision",
+        "revision",
+        "presentation",
+        "ruleId",
+        "schemaVersion",
+        "data"
+      ],
+      "type": "object"
+    },
+    "RoomView": {
+      "additionalProperties": false,
+      "properties": {
+        "characters": {
+          "items": {
+            "$ref": "#/$defs/RoomCharacter"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/Message"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "messages",
+        "characters"
+      ],
+      "type": "object"
+    },
+    "SenderSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "avatar": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "avatar"
+      ],
+      "type": "object"
+    },
+    "SnapshotFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint": {
+          "type": "string"
+        },
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "sync.snapshot"
+          ],
+          "type": "string"
+        },
+        "view": {
+          "$ref": "#/$defs/RoomView"
+        }
+      },
+      "required": [
+        "type",
+        "syncId",
+        "checkpoint",
+        "view"
+      ],
+      "type": "object"
+    },
+    "SubscribeFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "subscribe"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "syncId",
+        "roomId"
+      ],
+      "type": "object"
+    },
+    "UnsubscribeFrame": {
+      "additionalProperties": false,
+      "properties": {
+        "syncId": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "unsubscribe"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "syncId"
+      ],
+      "type": "object"
+    },
+    "Window": {
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "type": "string"
+        },
+        "windowId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "windowId",
+        "entry"
+      ],
+      "type": "object"
+    },
+    "WriteCharacterInput": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {},
+        "expectedRevision": {
+          "type": "string"
+        },
+        "roomCharacterId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomCharacterId",
+        "expectedRevision",
+        "data"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "room"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "kp"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "members"
+              ],
+              "type": "string"
+            },
+            "memberIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "memberIds"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  ]
+}

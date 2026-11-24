@@ -1,111 +1,66 @@
 # @narratable/protocol
 
-故桌（NarraTable）接口协议 v1 — 共享 TypeScript 类型定义。
+故桌（NarraTable）接口协议的 TypeScript 类型。类型全部由后端实际导出的契约生成，后端（`narra-table-server`）是唯一事实来源；本仓库不手写接口定义。
 
-桌面端和移动端前端团队的单一事实来源。
+## 内容
 
-## 安装
-
-### npm（发布后）
-
-```bash
-npm install @narratable/protocol
+```text
+contract/            # 后端 `make contract` 导出的完整契约包，原样固定（不要手动编辑）
+├── openapi.json     # HTTP 接口
+├── realtime.json    # WebSocket 帧、会话、心跳与同步语义
+├── plugin.json      # 插件清单、CPI、窗口桥
+├── schemas/         # 独立 schema
+└── source.json      # backendCommit、contractHash、能力集合
+generated/           # 由 contract/ 生成的声明（不要手动编辑）
+legacy/              # 旧版手写协议，仅供迁移参考，不对应任何新版接口
+scripts/             # 同步、生成与校验脚本
+test/usage.ts        # 编译期用法检查
 ```
 
-### Git URL（无需发布）
-
-```json
-{
-  "dependencies": {
-    "@narratable/protocol": "github:Narra-Table/protocol"
-  }
-}
-```
+当前固定版本见 `contract/source.json`。
 
 ## 使用
 
 ```ts
-import type { Narratable } from "@narratable/protocol";
+import type { Message, MessageSubmit, ServerFrame, paths } from '@narratable/protocol';
 
-// 领域类型
-const space: Narratable.Space = { ... };
-const room: Narratable.Room = { ... };
-const msg: Narratable.Message = { ... };
+function onFrame(frame: ServerFrame) {
+  switch (frame.type) {
+    case 'sync.snapshot': // frame.view.messages
+    case 'sync.batch': // frame.before / frame.after / frame.changes
+    case 'sync.heartbeat': // frame.checkpoint
+  }
+}
 
-// REST API 类型（用于前后端对齐 + Mock）
-const req: Narratable.API.CreateSpaceRequest = { name: "..." };
-const res: Narratable.API.SpacesListResponse = { spaces: [...] };
-const q: Narratable.API.MessagesQuery = { cursor: null, limit: 50 };
-
-// WebSocket 发送格式
-const ws: Narratable.WS.SendChat = {
-  type: "chat",
-  roomId: "...",
-  spaceId: "...",
-  content: [{ type: "paragraph", children: [{ type: "text", text: "..." }] }]
-};
-
-// WebSocket 事件（服务端推送）
-const evt: Narratable.Event = {
-  type: "message.created",
-  spaceId: "...",
-  timestamp: "...",
-  message: { ... }
-};
+type History = paths['/api/v2/rooms/{roomId}/messages']['get'];
 ```
 
-## 核心概念
+- `paths`、`operations`：HTTP 路径与操作，可直接用于 `openapi-fetch` 等类型化客户端。
+- 每个 schema 都有同名类型别名，例如 `Message`、`Space`、`Audience`、`BatchFrame`。
+- `ClientFrame`、`ServerFrame` 是按 `type` 判别的帧联合；`ClientFrames`、`ServerFrames` 按帧类型索引。
+- `CpiMethods`、`BridgeMethod`、`BridgeInputs` 描述插件运行时与窗口桥。
+- 会话、心跳、checkpoint 与错误回执的语义以 `contract/realtime.json` 中的说明字段为准。
+- 数组字段在契约中声明为“数组或 null”，消费方需要处理 `null`。
+- 旧版类型可从 `@narratable/protocol/legacy` 导入，只用于迁移期间对照，新代码不得使用。
 
-```
-空间(Space) > 房间(Room) > 消息(Message)
-  │              │
-  ├─ 成员(Member)  ├─ 会话房 / 资料房 / 私密房 / 工具房
-  ├─ 面具(Mask)    └─ 实时消息流 + 帷幕可见性
-  ├─ 角色(Character)
-  └─ 帷幕(Veil)绑定在消息上
-```
+## 更新契约
 
-## 类型结构
+```bash
+# 后端：在干净的提交上导出
+make contract
 
-```
-Narratable
-├── Space / Space.Role / Space.Member  — 空间与成员
-├── Room / Room.Type                   — 房间与类型
-├── Mask / Mask.Type                   — 面具（发言身份）
-├── Character                         — 角色卡
-├── Veil / Veil.Visibility            — 帷幕（可见性）
-├── Message / Message.Type            — 消息本体
-│   ├── Message.Block[]               — 块级元素
-│   ├── Message.Inline                — 行内元素
-│   ├── Message.MessageQuery          — 分页查询
-│   └── Message.PaginatedMessages     — 分页响应
-├── Event                             — WebSocket 实时事件
-├── API                               — REST API 请求/响应类型
-└── WS                                — WebSocket 发送格式
+# 本仓库：同步、生成并校验
+pnpm sync-contract ../narra-table-server/dist/contract
+pnpm generate
+pnpm check
 ```
 
-## Go 后端类型对应
+- `sync-contract` 拒绝 `dirty=true` 的导出，并按后端算法重算 `contractHash`，与 `source.json` 不一致时拒绝。
+- `check` 校验契约未被改动、`generated/` 与契约一致，并对 `test/usage.ts` 做类型检查。
+- 生成时同名 schema 在 HTTP 与 WebSocket/插件契约中必须完全一致，否则失败。
 
-后端 Go 代码中对应的类型定义位于 `backend/pkg/protocol/`：
+## 版本
 
-| TS 文件 | Go 文件 |
-|---|---|
-| `Narratable.Space` | `pkg/protocol/space.go` |
-| `Narratable.Room` | `pkg/protocol/room.go` |
-| `Narratable.Mask` | `pkg/protocol/mask.go` |
-| `Narratable.Character` | `pkg/protocol/character.go` |
-| `Narratable.Veil` | `pkg/protocol/veil.go` |
-| `Narratable.Message` | `pkg/protocol/message.go` |
-| `Narratable.Event` | `pkg/protocol/events.go` |
-| 基础 ID 类型 | `pkg/protocol/types.go` |
-| Block / Inline | `pkg/protocol/blocks.go` |
-
-修改协议时需同步更新 TS 和 Go 两侧。
-
-## 版本策略
-
-- 主版本号 = 协议大版本（当前 v1）
-- 次版本号 = 新增类型/字段（向后兼容）
-- 修订号 = 注释/文档修正
-
-协议破坏性变更升级主版本号。
+- 包版本 `2.x` 对应新版后端契约；`contract/source.json` 的 `contractHash` 标识具体契约。
+- 消费方应固定到本仓库的具体提交，而不是分支。
+- 契约有破坏性变更时提升主版本或预发布序号，并在提交说明中写明 `contractHash`。

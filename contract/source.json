@@ -1,0 +1,22 @@
+{
+  "backendCommit": "dded063bb9fc438847fb40862dc3ba4e7e6d27b9",
+  "dirty": false,
+  "goVersion": "go1.24.4",
+  "contractVersion": "2.0.0-dev",
+  "generatorVersion": "1",
+  "contractHash": "d4e74eeda56be1e2c37219209f57977837f63f49eddba0b5d98aaeda31492898",
+  "capabilities": [
+    "auth.sessions",
+    "spaces.invites",
+    "rooms.memberships",
+    "chat.text",
+    "chat.mentions",
+    "chat.edit-delete",
+    "audience.room-kp-members",
+    "sync.snapshot-batch-resync",
+    "plugin.go-js",
+    "plugin.local-test",
+    "characters.independent-copies",
+    "invocations.durable"
+  ]
+}
