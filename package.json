@@ -1,21 +1,42 @@
 {
   "name": "@narratable/protocol",
-  "version": "1.0.0",
-  "description": "故桌（NarraTable）接口协议 v2 — 共享 TypeScript 类型定义",
-  "types": "./proposed_protocol.d.ts",
+  "version": "2.0.0-dev.1",
+  "description": "故桌（NarraTable）接口协议 — 由后端导出契约生成的 TypeScript 类型",
+  "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts"
+    },
+    "./legacy": {
+      "types": "./legacy/proposed_protocol.d.ts"
+    },
+    "./contract/*": "./contract/*"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit proposed_protocol.d.ts"
+    "sync-contract": "node scripts/sync-contract.mjs",
+    "generate": "node scripts/generate.mjs",
+    "check": "node scripts/check.mjs && tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3"
   },
   "files": [
-    "proposed_protocol.d.ts"
+    "index.d.ts",
+    "generated",
+    "contract",
+    "legacy"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Narra-Table/protocol.git"
   },
   "license": "AGPL-3.0",
-  "keywords": ["trpg", "narratable", "protocol", "types"]
+  "keywords": [
+    "trpg",
+    "narratable",
+    "protocol",
+    "types"
+  ]
 }
